@@ -1,5 +1,9 @@
 import sys
 import numpy as np 
+import Util
+from CaviarModel import CaviarModel
+from PostCal import PostCal
+import argparse
 #import numpy.kron to do kronecker product
 
 def read_LD(read_fn):
@@ -25,7 +29,7 @@ def read_z(read_fn):
         S_VECTOR.append(array[1])
     return SNP_NAME, S_VECTOR
 
-#outputs 4 files
+#outputs 4 files (deprecated)
 def output(output_file, causal_vec, SNP, prob_in_causal, causal_post):
     #print the causal set
     f = open(output_file + "_set",'w')
@@ -50,22 +54,13 @@ def output(output_file, causal_vec, SNP, prob_in_causal, causal_post):
         u.write("\n")
     u.close()
 
-    #not done
-    #not done
-    #not done
-    #not done
-    #not done
+    #histogram file
     s = open(output_file + "hist",'w')
     s.close()
 
     #log file
     v = open(output_file + "log",'w')
     v.close()
-    #not done
-    #not done
-    #not done
-    #not done
-    #not done
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='CAVIAR is a statistical framework that quantifies the probability of each variant '
@@ -79,7 +74,7 @@ if __name__ == "__main__":
     parser.add_argument('-r', '--rho-prob', required=False, dest='pho_probability',
                         help='set pho probability, default is 0.95')
     parser.add_argument('-c', '--causal', required=False, dest='M_causal',
-                        help='set the maximum number of causal SNPs, default is 2')
+                        help='set the minimum number of causal SNPs, default is 2')
 
     args = parser.parse_args()
     O_fn = args.output_file
@@ -94,6 +89,7 @@ if __name__ == "__main__":
     else:
         rho_prob = 0.95
 
+    
     if args.M_causal:
         MAX_causal = args.M_causal
     else:
@@ -101,10 +97,10 @@ if __name__ == "__main__":
 
     NCP = 5.2
     gamma = 0.01
-    histFlag = false
+    histFlag = 0
     oc = 0
 
-    caviarModel caviar(M_SIGMA, SNP_NAME, S_VECTOR, O_fn, M_causal, NCP, rho_prob, histFlag, gamma)
+    caviar = CaviarModel(M_SIGMA, SNP_NAME, S_VECTOR, O_fn, MAX_causal, NCP, rho_prob, histFlag, gamma)
     caviar.run()
     caviar.finishUp()
 
