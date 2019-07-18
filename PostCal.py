@@ -191,7 +191,7 @@ class PostCal():
                 print(float(i) / float(total_iteration) * 100, "%\r")
 
         for i in range(self.maxCausalSNP+1):
-            self.histValues[i] = exp(self.histValues[i]-sumLikelihood)
+            self.histValues[i] = exp(self.histValues[i] - sumLikelihood)
 
         return sumLikelihood
     # end computeTotalLikelihood()
