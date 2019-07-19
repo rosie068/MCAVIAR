@@ -13,7 +13,7 @@ def read_LD(read_fn):
         SIGMA.append(array)
     return SIGMA
 
-#returns 2 lists of [SNP name, association statistics]
+#returns 2*n list of [SNP name, association statistics]
 def read_z(read_fn):
     f = open(read_fn, 'r')
     SNP_NAME = []
@@ -105,6 +105,15 @@ if __name__ == "__main__":
         prob.append(array[1])
         causal.append(array[2])
     output(causal_vec,SNP,prob,causal)
+
+    #S_Vector has name and z-score
+    '''double NCP = 5.2
+    double gamma = 0.01
+    CaviarModel caviar(M_SIGMA, S_VECTOR, MAX_causal, NCP, rho_prob, gamma)
+    caviar.run()
+    caviar.print()'''
+    #output(O_fn, causal_vec, SNP, prob_in_causal, causal_post)
+
 
 
 

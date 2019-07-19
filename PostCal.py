@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 from math import log, sqrt, exp
-from numpy.linalg import inv, det
+from numpy.linalg import inv, det, pinv
 from scipy.special import comb
 import Util
 from Util import data
@@ -25,17 +25,18 @@ class PostCal():
         self.histValues = [0] * (int(MAX_causal)+1)
         self.totalLikeLihoodLOG = 0
 
-        statMatrix = np.zeros((self.snpCount,1))
-        statMatrixtTran = np.zeros((1,self.snpCount))
+        self.statMatrix = np.zeros((self.snpCount,1))
+        self.statMatrixtTran = np.zeros((1,self.snpCount))
         for i in range(self.snpCount):
-            statMatrix[i][0] = S_VECTOR[i]
-            statMatrixtTran[0][i] = S_VECTOR[i]
+            self.statMatrix[i][0] = S_VECTOR[i]
+            self.statMatrixtTran[0][i] = S_VECTOR[i]
 
         self.sigmaMatrix = np.zeros((self.snpCount,self.snpCount))
         for i in range(self.snpCount):
             for j in range(self.snpCount):
                 self.sigmaMatrix[i][j] = M_SIGMA[i][j]
-        sigmaDet = det(self.sigmaMatrix)
+        self.sigmaDet = det(self.sigmaMatrix)
+        self.invSigmaMatrix = inv(self.sigmaMatrix)
 
     # addition in log space
     def addlogSpace(self,a, b):
@@ -55,6 +56,8 @@ class PostCal():
     # auxiliary function for fastLikelihood
     # dmvnorm is the pdf of multivariate normal distribution
     # dmvnorm(Z, mean=rep(0,nrow(R)), R + R %*% R) / dmvnorm(Z, mean=rep(0, nrow(R)), R))
+
+    #######keep same, pass in sigma i for study i. n studies, take in n z-score files, n LD-files
     def fracdmvnorm(self, Z, mean, R, diagC, NCP):
         temp = np.matmul(R, diagC)
         newR = R + np.matmul(temp,R)
@@ -111,6 +114,56 @@ class PostCal():
 
         return self.fracdmvnorm(Zcc, mean, Rcc, diagC, NCP)
     # end fastLikelihood()
+
+
+    #use Woodbury
+    def Likelihood(self,configure,stat,NCP):
+        causalCount = 0
+        index_C = 0
+        matDet = 0
+        res = 0
+
+        for i in range(self.snpCount):
+            causalCount = causalCount + configure[i]
+        if causalCount == 0:
+            tmpResultMatrix1N = np.matmul(self.statMatrixtTran, self.invSigmaMatrix)
+            tmpResultMatrix11 = np.matmul(tmpResultMatrix1N, self.statMatrix)
+            res = tmpResultMatrix11[0][0]
+            matDet = self.sigmaDet
+            return -res/2-sqrt(abs(matDet))
+
+        U_mat = np.zeros((self.snpCount, causalCount))
+        V_mat = np.zeros((causalCount, self.snpCount))
+        VU_mat = np.zeros((causalCount, causalCount))
+
+        for i in range(self.snpCount):
+            if configure[i] != 0:
+                for j in range(self.snpCount):
+                    U_mat[j,index_C] = self.sigmaMatrix[j][i]
+                V_mat[index_C][i] = NCP
+                index_C = index_C + 1
+
+        VU_mat = np.matmul(V_mat,U_mat)
+        I_AA = np.identity(self.snpCount)
+        tmp_CC = np.identity(causalCount) + VU_mat
+        matDet = det(tmp_CC) * self.sigmaDet
+        temp1 = np.matmul(self.invSigmaMatrix,U_mat)
+        temp2 = np.matmul(temp1,pinv(tmp_CC))
+        tmp_AA = self.invSigmaMatrix - (np.matmul(temp2,V_mat))
+        tmpResultMatrix1N = np.matmul(self.statMatrixtTran,tmp_AA)
+        tmpResultMatrix11 = np.matmul(tmpResultMatrix1N, self.statMatrix)
+        res = tmpResultMatrix11[0][0]
+
+        if matDet == 0:
+            print("Error, the matrix is singular and we cannot fix it")
+            return 0
+
+        tmplogDet = log(sqrt(abs(matDet)))
+        tmpFinalRes = - res/2 - tmplogDet
+        '''if tmpFinalRes > 700:
+            return exp(700)'''
+        #print(tmpFinalRes)
+        return tmpFinalRes
 
     
     # generate a potential configuration of causal set
@@ -179,7 +232,7 @@ class PostCal():
             configure[i] = 0
 
         for i in range(total_iteration):
-            tmp_likelihood = self.fastLikelihood(configure, stat, NCP) + num * log(self.gamma) + (self.snpCount-num) * log(1-self.gamma)    
+            tmp_likelihood = self.Likelihood(configure, stat, NCP) + num * log(self.gamma) + (self.snpCount-num) * log(1-self.gamma)    
             sumLikelihood = self.addlogSpace(sumLikelihood, tmp_likelihood)
             for j in range(self.snpCount):
                 self.postValues[j] = self.addlogSpace(self.postValues[j], tmp_likelihood * configure[j])
@@ -191,7 +244,7 @@ class PostCal():
                 print(float(i) / float(total_iteration) * 100, "%\r")
 
         for i in range(self.maxCausalSNP+1):
-            self.histValues[i] = exp(self.histValues[i] - sumLikelihood)
+            self.histValues[i] = exp(self.histValues[i]-sumLikelihood)
 
         return sumLikelihood
     # end computeTotalLikelihood()
@@ -213,7 +266,6 @@ class PostCal():
         f.close()
     # end printHist2File()
 
-    
     # find optimal set using greedy algorithm
     def findOptimalSetGreedy(self, stat, NCP, pcausalSet, rank, inputRho, outputFileName):
         index = 0
@@ -264,7 +316,7 @@ class PostCal():
         f.write(title1.ljust(30))
         title2 = "Prob_in_pCausalSet"
         f.write(title2.ljust(30))
-        title3 = "Causal_Post._Prob"
+        title3 = "Causal_Post_Prob"
         f.write(title3.ljust(30))
         f.write("\n")
 
