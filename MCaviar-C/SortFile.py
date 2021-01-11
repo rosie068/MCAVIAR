@@ -14,7 +14,7 @@ def not_find(arr, str):
         if arr[i] == str:
             return False
     return True
- 
+
 def Msort(index, arr1, arr2, matrix):
     """
     sort SNP_NAME, Z-Score, and LD matrix according to the list of index
@@ -37,9 +37,9 @@ def Msort(index, arr1, arr2, matrix):
         temp_arr2[i] = arr2[index[i]]
         #get row
         temp_mat1[i] = matrix[index[i]]
-    #we want to sort the columns too, so we transpose the matrix, get columns as the rows, then transpose again 
+    #we want to sort the columns too, so we transpose the matrix, get columns as the rows, then transpose again
     temp_mat1 = temp_mat1.transpose()
-    #get column as the rows, then transpose the matrix    
+    #get column as the rows, then transpose the matrix
     for i in range(len(index)):
         temp_mat2[i] = temp_mat1[index[i]]
     temp_mat2 = temp_mat2.transpose()
@@ -160,7 +160,3 @@ if __name__ == "__main__":
                 s.write(" ")
             s.write("\n")
         s.close()
-
-
-
-        
